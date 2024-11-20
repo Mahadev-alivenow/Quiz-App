@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: quiz-app-backend
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: MONGODB_URI
+        value: mongodb+srv://mahadev:ka039814@cluster0.tiauwuh.mongodb.net/quiz-app?retryWrites=true&w=majority
+      - key: JWT_SECRET
+        value: quiz-app-secret-key-2023
+      - key: PORT
+        value: 5003
