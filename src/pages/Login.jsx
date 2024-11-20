@@ -1,28 +1,29 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import { API_URL } from "../config";
 
 function Login() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    email: '',
-    password: ''
+    email: "",
+    password: "",
   });
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
 
     try {
-      const response = await axios.post('/api/login', formData);
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      navigate('/quizzes');
+      const response = await axios.post(`${API_URL}/api/login`, formData);
+      localStorage.setItem("token", response.data.token);
+      localStorage.setItem("user", JSON.stringify(response.data.user));
+      navigate("/quizzes");
     } catch (err) {
-      setError(err.response?.data?.error || 'An error occurred during login');
+      setError(err.response?.data?.error || "An error occurred during login");
     } finally {
       setLoading(false);
     }
@@ -43,7 +44,9 @@ function Login() {
             type="email"
             className="w-full p-2 border rounded"
             value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, email: e.target.value })
+            }
             required
           />
         </div>
@@ -53,7 +56,9 @@ function Login() {
             type="password"
             className="w-full p-2 border rounded"
             value={formData.password}
-            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, password: e.target.value })
+            }
             required
           />
         </div>
@@ -62,7 +67,7 @@ function Login() {
           className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 disabled:bg-blue-300"
           disabled={loading}
         >
-          {loading ? 'Logging in...' : 'Login'}
+          {loading ? "Logging in..." : "Login"}
         </button>
       </form>
     </div>

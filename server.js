@@ -1,30 +1,41 @@
-// Previous imports remain the same
-import { Score } from './models/Score.js';
-
-// ... (previous code remains the same until Quiz routes)
-
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
 import { User } from "./models/User.js";
 import { Quiz } from "./models/Quiz.js";
 import { Question } from "./models/Question.js";
-import dotenv from "dotenv";
+import { Score } from "./models/Score.js";
 
 dotenv.config();
 
 const app = express();
-app.use(cors());
+
+// Configure CORS
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://quiz-category-app.netlify.app",
+      // Add other frontend URLs as needed
+    ],
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 
-const { MONGODB_URI, PORT, JWT_SECRET } = process.env;
+const { MONGODB_URI, PORT = 5003 } = process.env;
 
 mongoose
   .connect(MONGODB_URI)
   .then(() => console.log("Connected to MongoDB"))
   .catch((err) => console.error("MongoDB connection error:", err));
+
+// Health check endpoint
+app.get("/", (req, res) => {
+  res.json({ status: "ok", message: "Quiz API is running" });
+});
 
 // Auth middleware
 const auth = async (req, res, next) => {
@@ -133,25 +144,11 @@ app.post("/api/login", async (req, res) => {
 //   res.json(req.user);
 // });
 
-
-
-// Quiz routes
-app.get('/api/quizzes', async (req, res) => {
+app.get("/api/quiz/:id", auth, async (req, res) => {
   try {
-    const isAuthenticated = req.header('Authorization');
-    const quizzes = await Quiz.find(isAuthenticated ? {} : { isPublic: true })
-      .populate('questions');
-    res.json(quizzes);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.get('/api/quiz/:id', auth, async (req, res) => {
-  try {
-    const quiz = await Quiz.findById(req.params.id).populate('questions');
+    const quiz = await Quiz.findById(req.params.id).populate("questions");
     if (!quiz) {
-      return res.status(404).json({ error: 'Quiz not found' });
+      return res.status(404).json({ error: "Quiz not found" });
     }
     res.json(quiz);
   } catch (error) {
@@ -159,13 +156,13 @@ app.get('/api/quiz/:id', auth, async (req, res) => {
   }
 });
 
-app.post('/api/quiz/:id/submit', auth, async (req, res) => {
+app.post("/api/quiz/:id/submit", auth, async (req, res) => {
   try {
     const { answers, timeTaken } = req.body;
-    const quiz = await Quiz.findById(req.params.id).populate('questions');
-    
+    const quiz = await Quiz.findById(req.params.id).populate("questions");
+
     if (!quiz) {
-      return res.status(404).json({ error: 'Quiz not found' });
+      return res.status(404).json({ error: "Quiz not found" });
     }
 
     let score = 0;
@@ -182,7 +179,7 @@ app.post('/api/quiz/:id/submit', auth, async (req, res) => {
       quiz: quiz._id,
       score,
       maxScore,
-      timeTaken
+      timeTaken,
     });
 
     res.json({ score, maxScore, scoreRecord });
@@ -191,22 +188,22 @@ app.post('/api/quiz/:id/submit', auth, async (req, res) => {
   }
 });
 
-app.get('/api/scores', auth, async (req, res) => {
+app.get("/api/scores", auth, async (req, res) => {
   try {
     const scores = await Score.find({ user: req.user._id })
-      .populate('quiz')
-      .sort('-createdAt');
+      .populate("quiz")
+      .sort("-createdAt");
     res.json(scores);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-app.get('/api/leaderboard/:quizId', async (req, res) => {
+app.get("/api/leaderboard/:quizId", async (req, res) => {
   try {
     const scores = await Score.find({ quiz: req.params.quizId })
-      .populate('user', 'username')
-      .sort('-score')
+      .populate("user", "username")
+      .sort("-score")
       .limit(10);
     res.json(scores);
   } catch (error) {

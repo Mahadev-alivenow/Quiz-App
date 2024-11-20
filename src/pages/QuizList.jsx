@@ -1,22 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import axios from 'axios';
+import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import axios from "axios";
+import { API_URL } from "../config";
 
 function QuizList() {
   const [quizzes, setQuizzes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem("token");
 
   useEffect(() => {
     const fetchQuizzes = async () => {
       try {
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        const response = await axios.get('/api/quizzes', { headers });
+        const response = await axios.get(`${API_URL}/api/quizzes`, { headers });
         setQuizzes(response.data);
         setLoading(false);
       } catch (err) {
-        setError('Failed to fetch quizzes');
+        setError("Failed to fetch quizzes");
         setLoading(false);
       }
     };
