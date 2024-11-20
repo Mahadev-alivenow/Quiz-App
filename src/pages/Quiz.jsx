@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import axios from "axios";
+import { API_URL } from "../config";
 
 function Quiz() {
   const { id } = useParams();
@@ -11,37 +12,42 @@ function Quiz() {
   const [timeLeft, setTimeLeft] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem("token");
 
   useEffect(() => {
     const fetchQuiz = async () => {
       try {
-        const response = await axios.get(`/api/quiz/${id}`, {
-          headers: { Authorization: `Bearer ${token}` }
+        const response = await axios.get(`${API_URL}/api/quiz/${id}`, {
+          headers: { Authorization: `Bearer ${token}` },
         });
         setQuiz(response.data);
         setTimeLeft(response.data.timeLimit);
         setAnswers(new Array(response.data.questions.length).fill(null));
         setLoading(false);
       } catch (err) {
-        setError('Failed to fetch quiz');
+        setError("Failed to fetch quiz");
         setLoading(false);
       }
     };
 
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
     fetchQuiz();
-  }, [id, token]);
+  }, [id, token, navigate]);
 
   useEffect(() => {
     if (timeLeft > 0) {
       const timer = setInterval(() => {
-        setTimeLeft(prev => prev - 1);
+        setTimeLeft((prev) => prev - 1);
       }, 1000);
       return () => clearInterval(timer);
     } else if (timeLeft === 0 && quiz) {
       handleSubmit();
     }
-  }, [timeLeft]);
+  }, [timeLeft, quiz]);
 
   const handleAnswer = (answerIndex) => {
     const newAnswers = [...answers];
@@ -52,18 +58,18 @@ function Quiz() {
   const handleSubmit = async () => {
     try {
       const response = await axios.post(
-        `/api/quiz/${id}/submit`,
+        `${API_URL}/api/quiz/${id}/submit`,
         {
           answers,
-          timeTaken: quiz.timeLimit - timeLeft
+          timeTaken: quiz.timeLimit - timeLeft,
         },
         {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
         }
       );
-      navigate('/scores', { state: { score: response.data } });
+      navigate("/scores", { state: { score: response.data } });
     } catch (err) {
-      setError('Failed to submit quiz');
+      setError("Failed to submit quiz");
     }
   };
 
@@ -78,7 +84,8 @@ function Quiz() {
       <div className="mb-6 flex justify-between items-center">
         <h2 className="text-2xl font-bold">{quiz.title}</h2>
         <div className="text-lg font-semibold">
-          Time Left: {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
+          Time Left: {Math.floor(timeLeft / 60)}:
+          {(timeLeft % 60).toString().padStart(2, "0")}
         </div>
       </div>
 
@@ -93,8 +100,8 @@ function Quiz() {
               key={index}
               className={`w-full p-3 text-left rounded ${
                 answers[currentQuestion] === index
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-100 hover:bg-gray-200'
+                  ? "bg-blue-500 text-white"
+                  : "bg-gray-100 hover:bg-gray-200"
               }`}
               onClick={() => handleAnswer(index)}
             >
@@ -106,8 +113,8 @@ function Quiz() {
 
       <div className="mt-6 flex justify-between">
         <button
-          className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-          onClick={() => setCurrentQuestion(prev => prev - 1)}
+          className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 disabled:opacity-50"
+          onClick={() => setCurrentQuestion((prev) => prev - 1)}
           disabled={currentQuestion === 0}
         >
           Previous
@@ -122,7 +129,7 @@ function Quiz() {
         ) : (
           <button
             className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-            onClick={() => setCurrentQuestion(prev => prev + 1)}
+            onClick={() => setCurrentQuestion((prev) => prev + 1)}
           >
             Next
           </button>
