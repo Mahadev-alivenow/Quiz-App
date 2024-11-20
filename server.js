@@ -12,6 +12,7 @@ dotenv.config();
 
 const app = express();
 
+// Update CORS configuration for production
 app.use(
   cors({
     origin: ["http://localhost:5173", "https://quiz-category-app.netlify.app"],
@@ -21,7 +22,13 @@ app.use(
 
 app.use(express.json());
 
-const { MONGODB_URI, PORT = 5003, JWT_SECRET } = process.env;
+const { MONGODB_URI, JWT_SECRET } = process.env;
+const PORT = process.env.PORT || 5003;
+
+// Keep-alive endpoint
+app.get("/keepalive", (req, res) => {
+  res.json({ status: "alive" });
+});
 
 // Auth middleware
 const authenticateToken = (req, res, next) => {
@@ -128,6 +135,6 @@ app.get("/api/scores", authenticateToken, async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
 });
