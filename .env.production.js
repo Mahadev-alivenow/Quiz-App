@@ -1,1 +1,1 @@
-VITE_API_URL=https://quiz-category-app.netlify.app/
+VITE_API_URL=https://quiz-app-backend-c1up.onrender.com
