@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
 import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
 import { User } from "./models/User.js";
 import { Quiz } from "./models/Quiz.js";
 import { Question } from "./models/Question.js";
@@ -11,32 +12,34 @@ import { Score } from "./models/Score.js";
 dotenv.config();
 
 const app = express();
+const PORT = process.env.PORT || 5003;
+const { MONGODB_URI, JWT_SECRET } = process.env;
 
-// Update CORS configuration for production
+// CORS configuration
 app.use(
   cors({
     origin: ["http://localhost:5173", "https://quiz-category-app.netlify.app"],
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
 app.use(express.json());
 
-const { MONGODB_URI, JWT_SECRET } = process.env;
-const PORT = process.env.PORT || 5003;
+// MongoDB Connection
+mongoose
+  .connect(MONGODB_URI)
+  .then(() => console.log("Connected to MongoDB"))
+  .catch((err) => console.error("MongoDB connection error:", err));
 
-// Keep-alive endpoint
-app.get("/keepalive", (req, res) => {
-  res.json({ status: "alive" });
-});
-
-// Auth middleware
+// Auth Middleware
 const authenticateToken = (req, res, next) => {
   const authHeader = req.header("Authorization");
   const token = authHeader && authHeader.split(" ")[1];
 
   if (!token) {
-    return res.status(401).json({ error: "Access denied" });
+    return res.status(401).json({ error: "Access denied. No token provided." });
   }
 
   try {
@@ -44,110 +47,113 @@ const authenticateToken = (req, res, next) => {
     req.user = verified;
     next();
   } catch (err) {
-    res.status(403).json({ error: "Invalid token" });
+    res.status(403).json({ error: "Invalid or expired token" });
   }
 };
 
-mongoose
-  .connect(MONGODB_URI)
-  .then(() => console.log("Connected to MongoDB"))
-  .catch((err) => console.error("MongoDB connection error:", err));
-
-// Health check
+// Health Check Routes
 app.get("/", (req, res) => {
   res.json({ status: "ok", message: "Quiz API is running" });
 });
 
+app.get("/keepalive", (req, res) => {
+  res.json({ status: "alive" });
+});
 
-// Auth routes
-app.post('/api/register', async (req, res) => {
+// Auth Routes
+app.post("/api/register", async (req, res) => {
   try {
     const { username, email, password } = req.body;
-    
-    // Check if user already exists
-    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
-    if (existingUser) {
-      return res.status(400).json({ 
-        error: 'User already exists with this email or username' 
-      });
+
+    if (!username || !email || !password) {
+      return res.status(400).json({ error: "All fields are required" });
     }
 
-    // Hash password
+    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+    if (existingUser) {
+      return res
+        .status(400)
+        .json({ error: "User already exists with this email or username" });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
-    
-    // Create user
     const user = new User({
       username,
       email,
-      password: hashedPassword
+      password: hashedPassword,
     });
-    
+
     await user.save();
-    
-    // Generate token
+
     const token = jwt.sign({ id: user._id }, JWT_SECRET);
-    
-    res.status(201).json({ 
-      message: 'Registration successful',
+
+    res.status(201).json({
+      message: "Registration successful",
       token,
       user: {
         id: user._id,
         username: user.username,
-        email: user.email
-      }
+        email: user.email,
+      },
     });
   } catch (error) {
-    res.status(500).json({ error: 'Server error' });
+    console.error("Registration error:", error);
+    res.status(500).json({ error: "Server error during registration" });
   }
 });
 
-app.post('/api/login', async (req, res) => {
+app.post("/api/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-    
-    // Find user
+
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required" });
+    }
+
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(400).json({ error: 'Invalid credentials' });
+      return res.status(400).json({ error: "Invalid credentials" });
     }
-    
-    // Check password
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(400).json({ error: 'Invalid credentials' });
+      return res.status(400).json({ error: "Invalid credentials" });
     }
-    
-    // Generate token
+
     const token = jwt.sign({ id: user._id }, JWT_SECRET);
-    
-    res.json({ 
-      message: 'Login successful',
+
+    res.json({
+      message: "Login successful",
       token,
       user: {
         id: user._id,
         username: user.username,
-        email: user.email
-      }
+        email: user.email,
+      },
     });
   } catch (error) {
-    res.status(500).json({ error: 'Server error' });
+    console.error("Login error:", error);
+    res.status(500).json({ error: "Server error during login" });
   }
 });
 
-// Get all quizzes
+// Quiz Routes
 app.get("/api/quizzes", async (req, res) => {
   try {
-    const isAuthenticated = req.header("Authorization");
+    const authHeader = req.header("Authorization");
+    const isAuthenticated = authHeader && authHeader.startsWith("Bearer ");
+
     const quizzes = await Quiz.find(
       isAuthenticated ? {} : { isPublic: true }
     ).populate("questions");
+
     res.json(quizzes);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Error fetching quizzes:", error);
+    res.status(500).json({ error: "Failed to fetch quizzes" });
   }
 });
 
-// Get specific quiz
 app.get("/api/quiz/:id", authenticateToken, async (req, res) => {
   try {
     const quiz = await Quiz.findById(req.params.id).populate("questions");
@@ -156,11 +162,10 @@ app.get("/api/quiz/:id", authenticateToken, async (req, res) => {
     }
     res.json(quiz);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: "Failed to fetch quiz" });
   }
 });
 
-// Submit quiz answers
 app.post("/api/quiz/:id/submit", authenticateToken, async (req, res) => {
   try {
     const quiz = await Quiz.findById(req.params.id).populate("questions");
@@ -172,14 +177,12 @@ app.post("/api/quiz/:id/submit", authenticateToken, async (req, res) => {
     let score = 0;
     const maxScore = quiz.questions.reduce((total, q) => total + q.points, 0);
 
-    // Calculate score
     answers.forEach((answer, index) => {
       if (answer === quiz.questions[index].correctAnswer) {
         score += quiz.questions[index].points;
       }
     });
 
-    // Save score
     const newScore = await Score.create({
       user: req.user.id,
       quiz: quiz._id,
@@ -195,11 +198,10 @@ app.post("/api/quiz/:id/submit", authenticateToken, async (req, res) => {
       percentage: (score / maxScore) * 100,
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: "Failed to submit quiz" });
   }
 });
 
-// Get user scores
 app.get("/api/scores", authenticateToken, async (req, res) => {
   try {
     const scores = await Score.find({ user: req.user.id })
@@ -207,7 +209,7 @@ app.get("/api/scores", authenticateToken, async (req, res) => {
       .sort({ createdAt: -1 });
     res.json(scores);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: "Failed to fetch scores" });
   }
 });
 

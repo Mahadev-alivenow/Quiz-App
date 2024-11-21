@@ -1,41 +1,44 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_URL } from "../config";
 
 function Register() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    username: '',
-    email: '',
-    password: '',
-    confirmPassword: ''
+    username: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
   });
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+      setError("Passwords do not match");
       return;
     }
 
     setLoading(true);
 
     try {
-      const response = await axios.post('/api/register', {
+      const response = await axios.post(`${API_URL}/api/register`, {
         username: formData.username,
         email: formData.email,
-        password: formData.password
+        password: formData.password,
       });
 
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      navigate('/quizzes');
+      localStorage.setItem("token", response.data.token);
+      localStorage.setItem("user", JSON.stringify(response.data.user));
+      navigate("/quizzes");
     } catch (err) {
-      setError(err.response?.data?.error || 'An error occurred during registration');
+      setError(
+        err.response?.data?.error || "An error occurred during registration"
+      );
     } finally {
       setLoading(false);
     }
@@ -56,7 +59,9 @@ function Register() {
             type="text"
             className="w-full p-2 border rounded"
             value={formData.username}
-            onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, username: e.target.value })
+            }
             required
           />
         </div>
@@ -66,7 +71,9 @@ function Register() {
             type="email"
             className="w-full p-2 border rounded"
             value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, email: e.target.value })
+            }
             required
           />
         </div>
@@ -76,7 +83,9 @@ function Register() {
             type="password"
             className="w-full p-2 border rounded"
             value={formData.password}
-            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, password: e.target.value })
+            }
             required
           />
         </div>
@@ -86,7 +95,9 @@ function Register() {
             type="password"
             className="w-full p-2 border rounded"
             value={formData.confirmPassword}
-            onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, confirmPassword: e.target.value })
+            }
             required
           />
         </div>
@@ -95,7 +106,7 @@ function Register() {
           className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 disabled:bg-blue-300"
           disabled={loading}
         >
-          {loading ? 'Registering...' : 'Register'}
+          {loading ? "Registering..." : "Register"}
         </button>
       </form>
     </div>
